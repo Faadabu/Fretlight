@@ -51,8 +51,16 @@ The launcher serves `dist`, so rebuild after source edits. The development serve
 
 ## Validation
 
-22 Node tests cover tuning, tab parsing, invalid chords, lesson references, Ode to Joy timing/pitches, MusicXML transpose/voices/rests, synthetic optical recognition, playback speed, loop wrap, and simultaneous voices. The production build passes. Dependency audit reported zero vulnerabilities after updating PDF.js to 6.2.108 or newer.
+26 Node tests cover tuning, tab parsing, invalid chords, lesson references, Ode to Joy timing/pitches, MusicXML transpose/voices/rests, synthetic optical recognition, playback speed, loop wrap, and simultaneous voices. The production build passes. Dependency audit reported zero vulnerabilities after updating PDF.js to 6.2.108 or newer.
 
 Chrome checks confirmed the studio and 3D model render, Play changes to Pause, theory navigation, and review-gated editable notation reaching the player. Browser automation became intermittent afterward, so full interactive coverage, actual audio quality, PDF/photo upload end-to-end, and responsive visual QA remain unverified. Synthetic image tests do not establish real-world score recognition accuracy.
 
 Official references consulted: [Three.js WebGLRenderer](https://threejs.org/docs/pages/WebGLRenderer), [OrbitControls](https://threejs.org/docs/pages/OrbitControls.html), [MusicXML technical fingering](https://www.w3.org/2021/06/musicxml40/musicxml-reference/elements/fingering/), [PDF.js](https://github.com/mozilla/pdf.js), and [Web Audio](https://www.w3.org/TR/webaudio-1.0/).
+
+## Reference-based 3D revision
+
+The fretting view now follows the supplied photo orientation: body left, neck rising to the right, bass string 6 above treble string 1. Four presets provide fretting close-up, full guitar, player-eye angle, and picking-hand detail. There are visible string numbers, active-string highlights, fingertip labels, and an on-stage opacity slider. Solid skin is the default for new settings; reduce opacity to see strings through the hand.
+
+The meshes now have continuous tapered fingers, curved knuckles, nails, an attached thumb behind the neck, a forearm, and a thumb/index plectrum grip. The instrument has a soundhole cut through the soundboard, wood grain, binding, a rounded bridge, six tuners, and different string gauges. Materials use physical lighting, reflections, and shadows. These are enhanced procedural teaching models, not photogrammetric or fully photoreal human scans. Advanced barres and finger collisions can still require refinement.
+
+Posture references: [Fender fretting guidance](https://www.fender.com/articles/techniques/play-guitar-left-handed), [JustinGuitar Positive Finger Placement](https://www.justinguitar.com/guitar-lessons/positive-finger-placement-b1-103), and the user-supplied hand photographs.
