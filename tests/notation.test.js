@@ -32,5 +32,13 @@ test('reads multi-digit ASCII frets as one note', () => {
   assert.deepEqual(parsed.events[0].notes, [{ string: 1, fret: 10 }]);
 });
 
+test('reports malformed editable rows and preserves rests', () => {
+  const parsed = parseTab('this is not a notation row\n0 1');
+  assert.equal(parsed.events.length, 1);
+  assert.deepEqual(parsed.events[0].notes, []);
+  assert.equal(parsed.errors.length, 1);
+  assert.equal(formatTab(parsed.events), '0 1');
+});
+
 test('maps standard tuning pitches', () => { assert.equal(midiFor(6, 0), 40); assert.equal(noteName(1, 0), 'E4'); });
 

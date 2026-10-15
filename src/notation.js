@@ -41,6 +41,15 @@ export function validateEvents(events) {
   const warnings = [];
   if (!Array.isArray(events)) return { valid: false, warnings: ['events must be an array'] };
   events.forEach((event, index) => validateEvent(event, index, warnings));
+  const occupied = new Map();
+  events.forEach((event, index) => {
+    for (const note of event?.notes ?? []) {
+      if (!Number.isInteger(note?.string)) continue;
+      const prior = occupied.get(note.string) ?? [];
+      if (prior.some((range) => event.beat < range.end && event.beat + event.duration > range.start)) warning(warnings, `string ${note.string} overlaps another event`, index + 1);
+      prior.push({ start: event.beat, end: event.beat + event.duration }); occupied.set(note.string, prior);
+    }
+  });
   return { valid: warnings.length === 0, warnings };
 }
 
@@ -80,14 +89,19 @@ function parseAscii(lines, warnings) {
 
 export function parseTab(text) {
   const warnings = [];
+  const errors = [];
   const input = String(text ?? '');
   const lines = input.split(/\r?\n/);
+  const ascii = parseAscii(lines, warnings);
+  const isAscii = lines.filter((line) => /^\s*[eEbBgGdDaA][^|]*\|/.test(line)).length === 6;
   const explicit = [];
+  if (isAscii) return { events: ascii, warnings, errors };
   lines.forEach((raw, i) => {
     const trimmed = raw.trim();
     if (!trimmed || trimmed.startsWith('#')) return;
-    if (!/^\d+(?:\.\d+)?\s+\S+/.test(trimmed)) return;
+    if (!/^\d+(?:\.\d+)?(?:\s+.*)?$/.test(trimmed)) { errors.push(`Line ${i + 1}: malformed notation row`); return; }
     const parts = trimmed.split(/\s+/);
+    if (parts.length < 2) { errors.push(`Line ${i + 1}: notation row needs beat and duration`); return; }
     const beat = number(parts.shift());
     const duration = number(parts.shift());
     let label;
@@ -98,10 +112,10 @@ export function parseTab(text) {
     const notes = parts.map((part) => parseColumnToken(part, warnings, i + 1)).filter(Boolean);
     explicit.push({ beat, duration, notes, ...(direction ? { direction } : {}), ...(label ? { label } : {}) });
   });
-  const events = explicit.length ? explicit : parseAscii(lines, warnings);
+  const events = explicit;
   const result = validateEvents(events);
   warnings.push(...result.warnings);
-  return { events, warnings };
+  return { events, warnings, errors };
 }
 
 function children(node, name) { return node ? [...node.getElementsByTagName(name)].filter((item) => item.parentNode === node) : []; }
@@ -114,21 +128,24 @@ export function parseMusicXML(text) {
   if (!doc.documentElement || doc.getElementsByTagName('parsererror').length) return { events: [], warnings: ['Invalid MusicXML document'] };
   const part = doc.getElementsByTagName('part')[0];
   if (!part) return { events: [], warnings: ['MusicXML contains no part'] };
-  const events = []; let beat = 0; let divisions = 1; let lastStart = 0;
+  const events = []; let beat = 0; let divisions = 1; let transpose = 0; let lastStart = 0; let warnedWrittenOctave = false;
   for (const measure of children(part, 'measure')) {
+    const measureStart = beat; let measureEnd = measureStart;
     for (const item of [...measure.children]) {
       const name = item.localName || item.nodeName;
-      if (name === 'attributes') { const d = Number(textOf(item, 'divisions')); if (Number.isFinite(d) && d > 0) divisions = d; }
+      if (name === 'attributes') { const d = Number(textOf(item, 'divisions')); if (Number.isFinite(d) && d > 0) divisions = d; const t = children(item, 'transpose')[0]; if (t) transpose = Number(textOf(t, 'chromatic') || 0) + 12 * Number(textOf(t, 'octave-change') || 0); }
       else if (name === 'backup' || name === 'forward') { const d = Number(textOf(item, 'duration')); if (Number.isFinite(d)) beat += (name === 'backup' ? -1 : 1) * d / divisions; }
       else if (name === 'direction' && (item.getElementsByTagName('metronome').length || item.getElementsByTagName('sound').length)) warning(warnings, 'tempo changes are ignored');
       else if (name === 'barline' && item.getElementsByTagName('repeat').length) warning(warnings, 'repeats are ignored');
       else if (name === 'note') {
         const d = Number(textOf(item, 'duration')); const duration = Number.isFinite(d) && d > 0 ? d / divisions : 0;
         const chord = children(item, 'chord').length > 0; const start = chord ? lastStart : beat;
-        if (children(item, 'rest').length) { if (!chord) beat += duration; continue; }
+        if (children(item, 'rest').length) { if (!chord) { events.push({ beat, duration, notes: [] }); measureEnd = Math.max(measureEnd, beat + duration); beat += duration; } continue; }
         const pitch = children(item, 'pitch')[0];
         if (!pitch || !duration) { warning(warnings, 'note without pitch or duration is ignored'); if (!chord) beat += duration; continue; }
-        const midi = (STEPS[textOf(pitch, 'step')] ?? 0) + 12 * (Number(textOf(pitch, 'octave')) + 1) + Number(textOf(pitch, 'alter') || 0);
+        const midi = (STEPS[textOf(pitch, 'step')] ?? 0) + 12 * (Number(textOf(pitch, 'octave')) + 1) + Number(textOf(pitch, 'alter') || 0) + transpose;
+        if (!item.getElementsByTagName('technical').length && !warnedWrittenOctave) { warning(warnings, 'MusicXML guitar pitches without technical string/fret are interpreted as written treble pitches; sounding octave may differ'); warnedWrittenOctave = true; }
+        if (item.getElementsByTagName('tie').length || item.getElementsByTagName('articulations').length) warning(warnings, 'ties and articulations are ignored');
         const tech = item.getElementsByTagName('technical')[0]; let string = Number(textOf(tech, 'string')); let fret = Number(textOf(tech, 'fret'));
         if (!Number.isInteger(string) || string < 1 || string > 6 || !Number.isInteger(fret) || fret < 0 || fret > 24) { const choices = OPEN_MIDI.map((open, idx) => ({ string: idx + 1, fret: midi - open })).filter((x) => x.fret >= 0 && x.fret <= 24); const choice = choices.sort((a, b) => a.fret - b.fret)[0]; string = choice?.string; fret = choice?.fret; }
         if (string == null) warning(warnings, `pitch ${midi} cannot be placed on guitar`); else {
@@ -136,10 +153,12 @@ export function parseMusicXML(text) {
           const note = { string, fret }; const fingering = textOf(tech, 'fingering'); if (fingering) note.finger = Number(fingering);
           if (event && chord) event.notes.push(note); else { events.push({ beat: start, duration, notes: [note] }); lastStart = start; }
         }
-        if (!chord) beat += duration;
+        if (!chord) { measureEnd = Math.max(measureEnd, beat + duration); beat += duration; }
       }
     }
+    beat = measureEnd;
   }
+  events.sort((a, b) => a.beat - b.beat || a.duration - b.duration);
   return { events, warnings: warnings.concat(validateEvents(events).warnings) };
 }
 

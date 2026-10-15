@@ -25,7 +25,7 @@ export function createGuitar(container) {
  const hand=new T.Group();scene.add(hand); const right=new T.Group();scene.add(right);const markers=new T.Group();scene.add(markers);
  function clear(g){while(g.children.length){const o=g.children.pop();o.geometry?.dispose();}}
  function finger(parent,points,r=.065){for(let i=0;i<points.length-1;i++)rod(new T.Vector3(...points[i]),new T.Vector3(...points[i+1]),r,skin,parent);points.slice(1).forEach(p=>ball(...p,r,skin,parent));}
- let current=null;
+ let current=null;let currentView="player";function setView(kind){currentView=kind;const distance=Math.max(7.5,13/(2*Math.tan(17*Math.PI/180)*camera.aspect));camera.position.set(...(kind==='neck'?[-2,-3.4,7]:kind==='top'?[-.4,0,distance]:[-.4,-distance*.35,distance*.94]));controls.target.set(kind==='neck'?-2:-.4,0,0);controls.update();}
  function pose(notes=[]){clear(hand);clear(markers);const fretted=notes.filter(n=>n.fret>0);const anchor=fretted.length?Math.min(...fretted.map(n=>fx(n.fret)-.12)):fx(2)-.12;
  const palm=ball(anchor+.35,-.86,.48,.3,skin,hand);palm.scale.set(1.45,1,.46);finger(hand,[[anchor+.55,-1.5,.35],[anchor+.4,-1.05,.45]],.18);
  for(let f=1;f<=4;f++){const n=fretted.find(n=>n.finger===f)||fretted.filter(n=>!n.finger)[f-1];const x=n?fx(n.fret)-.08:anchor+(f-1)*.19;const y=n?sy(n.string):-.46;finger(hand,[[anchor+(f-2)*.16,-.75,.48],[x,-.4,.69],[x,y,.25]],.055);}
@@ -34,8 +34,8 @@ export function createGuitar(container) {
  }
  const rp=ball(3,-.45,.8,.26,skin,right);rp.scale.set(1,1.3,.45);finger(right,[[3,-1.4,1],[3,-.65,.8]],.17);for(let f=0;f<4;f++)finger(right,[[2.85+f*.12,-.3,.8],[2.78+f*.13,.04,.58],[2.86+f*.12,.18,.36]],.055);finger(right,[[2.8,-.47,.8],[2.58,-.17,.55],[2.68,.03,.28]],.075);
  pose([]);
- const obs=new ResizeObserver(()=>{const {width,height}=container.getBoundingClientRect();if(!width||!height)return;renderer.setSize(width,height);camera.aspect=width/height;camera.updateProjectionMatrix();});obs.observe(container);
+ const obs=new ResizeObserver(()=>{const {width,height}=container.getBoundingClientRect();if(!width||!height)return;renderer.setSize(width,height);camera.aspect=width/height;camera.updateProjectionMatrix();setView(currentView);});obs.observe(container);
  renderer.setAnimationLoop(()=>{controls.update();renderer.render(scene,camera);});
- return { update(event,phase=0){if(event!==current){current=event;pose(event?.notes||[]);}const strummed=event?.notes?.length>1;const target=event?.notes?.[0]?.string||3;right.position.y=strummed?(event?.direction==='up'?1:-1)*(.5-Math.min(phase*4,1))*.7:sy(target)-.1;right.position.z=Math.sin(Math.min(phase*4,1)*Math.PI)*.12;},opacity(v){skin.opacity=v;},view(kind){camera.position.set(...(kind==='neck'?[-2,-3.4,7]:kind==='top'?[-.4,0,17]:[0,-8,15]));controls.target.set(kind==='neck'?-2:-.4,0,0);controls.update();},dispose(){obs.disconnect();renderer.setAnimationLoop(null);renderer.dispose();controls.dispose();}};
+ return { update(event,phase=0){const key=JSON.stringify(event?.notes||[]);if(key!==current){current=key;pose(event?.notes||[]);}const strummed=event?.notes?.length>1;const target=event?.notes?.[0]?.string||3;right.position.y=strummed?(event?.direction==='up'?1:-1)*(.5-Math.min(phase*4,1))*.7:sy(target)-.1;right.position.z=Math.sin(Math.min(phase*4,1)*Math.PI)*.12;},opacity(v){skin.opacity=v;},view:setView,dispose(){obs.disconnect();renderer.setAnimationLoop(null);renderer.dispose();controls.dispose();}};
 }
 

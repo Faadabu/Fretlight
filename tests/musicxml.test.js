@@ -1,0 +1,11 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {DOMParser} from 'linkedom';
+import {parseMusicXML,midiFor} from '../src/notation.js';
+globalThis.DOMParser=DOMParser;
+const score=body=>`<score-partwise><part id="P1">${body}</part></score-partwise>`;
+const note=(duration,extra='')=>`<note><pitch><step>E</step><octave>4</octave></pitch><duration>${duration}</duration>${extra}</note>`;
+test('technical string and fret override written pitch',()=>{const r=parseMusicXML(score(`<measure><attributes><divisions>2</divisions></attributes>${note(2,'<notations><technical><string>6</string><fret>0</fret></technical></notations>')}</measure>`));assert.equal(r.events[0].notes[0].string,6);assert.equal(r.events[0].duration,1);});
+test('explicit guitar octave transposition produces sounding E3',()=>{const r=parseMusicXML(score(`<measure><attributes><divisions>1</divisions><transpose><octave-change>-1</octave-change></transpose></attributes>${note(1)}</measure>`));const n=r.events[0].notes[0];assert.equal(midiFor(n.string,n.fret),52);});
+test('trailing rests contribute to the piece duration',()=>{const r=parseMusicXML(score(`<measure>${note(1)}<note><rest/><duration>3</duration></note></measure>`));assert.equal(r.events.at(-1).beat,1);assert.equal(r.events.at(-1).duration,3);assert.deepEqual(r.events.at(-1).notes,[]);});
+test('short second voice cannot pull the next measure backward',()=>{const r=parseMusicXML(score(`<measure>${note(4)}<backup><duration>4</duration></backup>${note(1)}</measure><measure>${note(1)}</measure>`));assert.ok(r.events.some(e=>e.beat===4));});
