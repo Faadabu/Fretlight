@@ -64,3 +64,9 @@ The fretting view now follows the supplied photo orientation: body left, neck ri
 The meshes now have continuous tapered fingers, curved knuckles, nails, an attached thumb behind the neck, a forearm, and a thumb/index plectrum grip. The instrument has a soundhole cut through the soundboard, wood grain, binding, a rounded bridge, six tuners, and different string gauges. Materials use physical lighting, reflections, and shadows. These are enhanced procedural teaching models, not photogrammetric or fully photoreal human scans. Advanced barres and finger collisions can still require refinement.
 
 Posture references: [Fender fretting guidance](https://www.fender.com/articles/techniques/play-guitar-left-handed), [JustinGuitar Positive Finger Placement](https://www.justinguitar.com/guitar-lessons/positive-finger-placement-b1-103), and the user-supplied hand photographs.
+
+## Jointed finger correction
+
+The fretting hand uses three-bone SkinnedMesh fingers and an analytic two-link reach solver plus a distal fingertip joint. Actual skinned fingertip vertices are checked against the guitar strings in the Am/Em regression test. Playback interpolates joints; paused seeks set the target immediately. Both forearms have been removed. The teaching view is closer and oblique to expose finger curvature. Initial and selected songs now use a common fingering planner with common chord shapes and stable melodic hand positions. The planner is heuristic, not a biomechanical optimizer; unusual stretches, barres and overlapping polyphony still need review. These remain procedural teaching hands, not photoreal scans.
+
+Architecture reference: https://threejs.org/docs/pages/SkinnedMesh.html and https://threejs.org/docs/pages/Skeleton.html . Chord reference: https://www.fender.com/articles/chords/how-to-read-a-chord-chart .
