@@ -1,0 +1,6 @@
+export class GuitarAudio {
+ async start(){this.ctx ||=new AudioContext();await this.ctx.resume();}
+ stop(){for(const s of this.sources||[])try{s.stop();}catch{}this.sources=[];}
+ pluck(midi,duration=1,delay=0){if(!this.ctx)return;const c=this.ctx,rate=c.sampleRate,freq=440*2**((midi-69)/12),n=Math.round(rate/freq),length=Math.ceil(rate*Math.min(4,Math.max(.2,duration))),buffer=c.createBuffer(1,length,rate),data=buffer.getChannelData(0),ring=new Float32Array(n);for(let i=0;i<n;i++)ring[i]=(Math.random()*2-1)*.35;for(let i=0;i<length;i++){data[i]=ring[i%n];ring[i%n]=.497*(ring[i%n]+ring[(i+1)%n]);}const source=c.createBufferSource();source.buffer=buffer;const gain=c.createGain();gain.gain.value=.55;source.connect(gain).connect(c.destination);source.start(c.currentTime+delay);this.sources||=[];this.sources.push(source);source.onended=()=>{this.sources=this.sources.filter(s=>s!==source);source.disconnect();gain.disconnect();};}
+ click(accent=false){if(!this.ctx)return;const o=this.ctx.createOscillator(),g=this.ctx.createGain();o.frequency.value=accent?1100:750;g.gain.setValueAtTime(.07,this.ctx.currentTime);g.gain.exponentialRampToValueAtTime(.001,this.ctx.currentTime+.045);o.connect(g).connect(this.ctx.destination);o.start();o.stop(this.ctx.currentTime+.05);}
+}
