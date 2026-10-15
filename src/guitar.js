@@ -35,7 +35,8 @@ export function createGuitar(container) {
  const rp=ball(3,-.45,.8,.26,skin,right);rp.scale.set(1,1.3,.45);finger(right,[[3,-1.4,1],[3,-.65,.8]],.17);for(let f=0;f<4;f++)finger(right,[[2.85+f*.12,-.3,.8],[2.78+f*.13,.04,.58],[2.86+f*.12,.18,.36]],.055);finger(right,[[2.8,-.47,.8],[2.58,-.17,.55],[2.68,.03,.28]],.075);
  pose([]);
  const obs=new ResizeObserver(()=>{const {width,height}=container.getBoundingClientRect();if(!width||!height)return;renderer.setSize(width,height);camera.aspect=width/height;camera.updateProjectionMatrix();setView(currentView);});obs.observe(container);
- renderer.setAnimationLoop(()=>{controls.update();renderer.render(scene,camera);});
- return { update(event,phase=0){const key=JSON.stringify(event?.notes||[]);if(key!==current){current=key;pose(event?.notes||[]);}const strummed=event?.notes?.length>1;const target=event?.notes?.[0]?.string||3;right.position.y=strummed?(event?.direction==='up'?1:-1)*(.5-Math.min(phase*4,1))*.7:sy(target)-.1;right.position.z=Math.sin(Math.min(phase*4,1)*Math.PI)*.12;},opacity(v){skin.opacity=v;},view:setView,dispose(){obs.disconnect();renderer.setAnimationLoop(null);renderer.dispose();controls.dispose();}};
+ let dirty=true;controls.addEventListener('change',()=>{dirty=true;}); renderer.setAnimationLoop(()=>{if(document.hidden)return;controls.update();if(dirty){renderer.render(scene,camera);dirty=false;}});
+ return { update(event,phase=0){dirty=true;const key=JSON.stringify(event?.notes||[]);if(key!==current){current=key;pose(event?.notes||[]);}const strummed=event?.notes?.length>1;const target=event?.notes?.[0]?.string||3;right.position.y=strummed?(event?.direction==='up'?1:-1)*(.5-Math.min(phase*4,1))*.7:sy(target)-.1;right.position.z=Math.sin(Math.min(phase*4,1)*Math.PI)*.12;},opacity(v){skin.opacity=v;dirty=true;},view:setView,dispose(){obs.disconnect();renderer.setAnimationLoop(null);renderer.dispose();controls.dispose();}};
 }
+
 

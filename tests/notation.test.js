@@ -42,3 +42,5 @@ test('reports malformed editable rows and preserves rests', () => {
 
 test('maps standard tuning pitches', () => { assert.equal(midiFor(6, 0), 40); assert.equal(noteName(1, 0), 'E4'); });
 
+
+test('invalid note tokens cannot silently become rests',()=>{assert.ok(parseTab('0 1 banana').errors.length>0);});

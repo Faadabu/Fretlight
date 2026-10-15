@@ -109,7 +109,9 @@ export function parseTab(text) {
     if (labelIndex >= 0) label = parts.splice(labelIndex, 1)[0].slice(6);
     let direction;
     if (parts.at(-1) === 'up' || parts.at(-1) === 'down') direction = parts.pop();
+    const before = warnings.length;
     const notes = parts.map((part) => parseColumnToken(part, warnings, i + 1)).filter(Boolean);
+    errors.push(...warnings.slice(before));
     explicit.push({ beat, duration, notes, ...(direction ? { direction } : {}), ...(label ? { label } : {}) });
   });
   const events = explicit;
