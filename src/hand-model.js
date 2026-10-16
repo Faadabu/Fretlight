@@ -29,6 +29,7 @@ function fingerRig(T,skin,nails,lengths,width){
  const plate=nail(T,nails,0,lengths[2]-.075,-width*.73,0,width*.65,.07);bones[2].add(plate);
  const axis=new T.Vector3(0,1,0),targets=bones.map(()=>new T.Quaternion());let targetBase=new T.Vector3();
  function solve(base,tip,barre=false){
+  if(barre){targetBase.copy(tip).add(new T.Vector3(0,-total,0));targets.forEach(q=>q.identity());return;}
   targetBase.copy(base);const distal=barre?new T.Vector3(0,1,0):new T.Vector3(0,.12,-.993).normalize();
   const dip=tip.clone().addScaledVector(distal,-lengths[2]),delta=dip.clone().sub(base),d=delta.length(),dir=delta.normalize(),a=lengths[0],b=lengths[1];
   // Hand placement is adjusted before solving; clamping only protects invalid imports.
@@ -49,10 +50,10 @@ export function createFrettingHand(T,skin,nails=skin){
   const position=options.handPosition||Math.max(1,Math.min(...notes.filter(n=>n.fret>0).map(n=>n.fret-(n.finger||1)+1),2));
   const next=JSON.stringify([notes,position]);if(next===key)return false;key=next;
   const anchor=fx(position)-.07; palm.position.x=anchor+.10;palm.scale.set(1,.64,.78);palm.position.y=-.12;
-  const fretted=notes.filter(n=>n.fret>0);const baseY=fretted.length?Math.min(...fretted.map(n=>sy(n.string)))-.55:-.65;palm.position.y+=baseY+.44;pressed=[];desired=[];
+  const fretted=notes.filter(n=>n.fret>0);const baseY=fretted.length?Math.max(Math.min(...fretted.map(n=>sy(n.string)))-.55,Math.max(...fretted.map(n=>sy(n.string)))-.68):-.65;palm.position.y+=baseY+.44;pressed=[];desired=[];
   rigs.forEach((r,i)=>{const assigned=fretted.filter(n=>n.finger===i+1),n=assigned[0],barre=assigned.length>1,peers=n?fretted.filter(m=>m.fret===n.fret&&m.finger!==n.finger):[];
    const x=n?fx(n.fret)-.07-Math.min(.15,peers.filter(m=>m.finger<n.finger).length*.055):anchor+i*.26;
-   const tip=new T.Vector3(x,n?Math.max(...assigned.map(m=>sy(m.string))):baseY+.39,n?.205:.49);
+   const tip=new T.Vector3(x,n?Math.max(...assigned.map(m=>sy(m.string)))+(barre?.08:0):baseY+.39,barre?.285:n?.205:.49);
    const base=new T.Vector3(anchor+i*.26,baseY-(i===3?.04:0),.43);
    // Splay at the knuckles to accommodate adjacent frets without stretching bones.
    base.x=T.MathUtils.clamp(base.x,x-.22,x+.22);if(barre)base.y=-.65;
@@ -70,6 +71,6 @@ export function createPickingHand(T,skin,nails=skin){
  group.add(surface(T,[[-.25,.68,.44],[-.38,.32,.48],[-.25,.02,.30],[-.07,-.02,.23]],[.14,.13,.105,.015],skin));group.add(surface(T,[[.32,1.02,.46],[.43,.62,.48],[.29,.30,.31],[.025,.08,.27]],[.18,.16,.12,.015],skin));group.add(nail(T,nails,.06,.12,.32,1.3,.09,.12));
  for(let i=0;i<3;i++){const x=-.05+i*.20;group.add(surface(T,[[x,.71,.5],[x-.11,.34,.55],[x-.07,.16,.36],[x+.01,.36,.24]],[.125-i*.012,.12-i*.01,.095-i*.008,.012],skin));}
  const shape=new T.Shape();shape.moveTo(-.10,.10);shape.quadraticCurveTo(-.13,.03,0,-.15);shape.quadraticCurveTo(.13,.03,.1,.1);shape.quadraticCurveTo(0,.16,-.1,.1);const pickMaterial=new T.MeshPhysicalMaterial({color:'#b97028',roughness:.32,clearcoat:.35}),pick=new T.Mesh(new T.ExtrudeGeometry(shape,{depth:.025,bevelEnabled:true,bevelSize:.008,bevelThickness:.006,bevelSegments:2}),pickMaterial);pick.position.set(0,0,.02);pick.rotation.x=.8;pick.name='Plectrum';group.add(pick);
- function update(event=null,phase=0,sy=s=>(s-3.5)*.12){const notes=event?.notes||[],low=notes.length?Math.max(...notes.map(n=>n.string)):6,high=notes.length?Math.min(...notes.map(n=>n.string)):1,progress=Math.min(1,Math.max(0,phase*4)),down=event?.direction!=='up',from=sy(down?low:high),to=sy(down?high:low),y=notes.length>1?from+(to-from)*progress:notes.length?sy(notes[0].string):0;group.position.set(2.82,y+.10,.27);group.rotation.x=-.17+Math.sin(progress*Math.PI)*.06;group.rotation.z=notes.length>1?(down?-1:1)*(.1-progress*.2):0;group.userData.pickTip=[2.82,y,.20];return true;}
+ function update(event=null,phase=0,sy=s=>(s-3.5)*.12){const notes=event?.notes||[],low=notes.length?Math.max(...notes.map(n=>n.string)):6,high=notes.length?Math.min(...notes.map(n=>n.string)):1,progress=Math.min(1,Math.max(0,phase*4)),down=event?.direction!=='up',from=sy(down?low:high),to=sy(down?high:low),y=notes.length>1?from+(to-from)*progress:notes.length?sy(notes[0].string):0;group.position.set(2.82,y+.10,.27);group.rotation.x=-.17+Math.sin(progress*Math.PI)*.06;group.rotation.z=notes.length>1?(down?-1:1)*(.1-progress*.2):0;group.updateMatrixWorld(true);const tipLocal=new T.Vector3(0,-.15,.0125);const actual=group.worldToLocal(pick.localToWorld(tipLocal)).applyQuaternion(group.quaternion);group.position.set(2.82-actual.x,y-actual.y,.20-actual.z);group.updateMatrixWorld(true);group.userData.pickTip=group.parent?group.parent.worldToLocal(pick.localToWorld(new T.Vector3(0,-.15,.0125))).toArray():pick.localToWorld(new T.Vector3(0,-.15,.0125)).toArray();return true;}
  return {group,update,dispose(){disposeMeshes(group);pickMaterial.dispose();}};
 }
