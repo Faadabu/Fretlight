@@ -1,3 +1,4 @@
+import {FINGER_COLORS} from './finger-colors.js';
 // Continuous, tapered teaching meshes in guitar-local coordinates.
 function surface(T,points,radii,material,{radial=16,segments=36,ellipse=1}={}){
  const curve=new T.CatmullRomCurve3(points.map(p=>new T.Vector3(...p)),false,'centripetal'),frames=curve.computeFrenetFrames(segments,false),positions=[],uv=[],indices=[];
@@ -13,7 +14,7 @@ function palmMesh(T,material,anchor){
 function nail(T,material,x,y,z,tilt=.6,width=.073,length=.105){const m=new T.Mesh(new T.SphereGeometry(1,20,12),material);m.scale.set(width,length,.018);m.position.set(x,y,z);m.rotation.x=tilt;m.castShadow=true;return m;}
 function disposeMeshes(group){group.traverse(o=>o.geometry?.dispose());group.clear();}
 // Each finger is a continuous weighted mesh driven by MCP, PIP and DIP bones.
-function fingerRig(T,skin,nails,lengths,width){
+function fingerRig(T,skin,nails,lengths,width,color){
  const total=lengths.reduce((a,b)=>a+b,0),pos=[],idx=[],si=[],sw=[],radial=16,rings=40;
  const cuts=[0,lengths[0],lengths[0]+lengths[1],total];
  for(let j=0;j<=rings;j++){const y=j/rings*total,t=y/total,r=width*(1-.22*t)*Math.sqrt(Math.max(.00001,1-Math.max(0,(t-.87)/.13)**2));
@@ -23,7 +24,8 @@ function fingerRig(T,skin,nails,lengths,width){
  }
  for(let j=0;j<rings;j++)for(let k=0;k<radial;k++){const a=j*(radial+1)+k,b=a+radial+1;idx.push(a,b,a+1,b,b+1,a+1);}
  const geo=new T.BufferGeometry();geo.setAttribute('position',new T.Float32BufferAttribute(pos,3));geo.setAttribute('skinIndex',new T.Uint16BufferAttribute(si,4));geo.setAttribute('skinWeight',new T.Float32BufferAttribute(sw,4));geo.setIndex(idx);geo.computeVertexNormals();
- const mesh=new T.SkinnedMesh(geo,skin),bones=lengths.map(()=>new T.Bone());bones[0].name='MCP';bones[1].name='PIP';bones[2].name='DIP';bones[0].add(bones[1]);bones[1].position.y=lengths[0];bones[1].add(bones[2]);bones[2].position.y=lengths[1];mesh.add(bones[0]);const skeleton=new T.Skeleton(bones);mesh.bind(skeleton);mesh.frustumCulled=false;
+ const tape=skin.clone();tape.color.set(color);tape.roughness=.9;tape.clearcoat=0;tape.name='Colored finger tape';for(let j=0;j<rings;j++)geo.addGroup(j*radial*6,radial*6,j/rings>=.38&&j/rings<=.88?1:0);
+ const mesh=new T.SkinnedMesh(geo,[skin,tape]),bones=lengths.map(()=>new T.Bone());bones[0].name='MCP';bones[1].name='PIP';bones[2].name='DIP';bones[0].add(bones[1]);bones[1].position.y=lengths[0];bones[1].add(bones[2]);bones[2].position.y=lengths[1];mesh.add(bones[0]);const skeleton=new T.Skeleton(bones);mesh.bind(skeleton);mesh.frustumCulled=false;
  const knuckle=new T.Mesh(new T.SphereGeometry(1,20,16),skin);knuckle.scale.set(width*1.12,.16,width*1.15);knuckle.position.set(0,-.055,0);bones[0].add(knuckle);
  const end=new T.Object3D();end.position.y=lengths[2];bones[2].add(end);
  const plate=nail(T,nails,0,lengths[2]-.075,-width*.73,0,width*.65,.07);bones[2].add(plate);
@@ -39,11 +41,11 @@ function fingerRig(T,skin,nails,lengths,width){
   targets[0].copy(world[0]);targets[1].copy(world[0]).invert().multiply(world[1]);targets[2].copy(world[1]).invert().multiply(world[2]);
  }
  function tick(amount=1){bones[0].position.lerp(targetBase,amount);bones.forEach((b,i)=>b.quaternion.slerp(targets[i],amount));mesh.updateMatrixWorld(true);skeleton.update();}
- return {mesh,bones,end,solve,tick,dispose(){skeleton.dispose();}};
+ return {mesh,bones,end,solve,tick,opacity(v){tape.opacity=v;tape.depthWrite=v>=.98;tape.needsUpdate=true;},dispose(){skeleton.dispose();tape.dispose();}};
 }
 export function createFrettingHand(T,skin,nails=skin){
- const group=new T.Group();group.name='Jointed fretting hand';const palm=palmMesh(T,skin,0);group.add(palm);
- const rigs=[.105,.112,.105,.09].map((w,i)=>fingerRig(T,skin,nails,[[.46,.34,.23],[.49,.36,.24],[.46,.34,.23],[.40,.29,.21]][i],w));rigs.forEach((r,i)=>{r.mesh.name=`Finger ${i+1} skeletal mesh`;group.add(r.mesh);});
+ const thumbTape=skin.clone();thumbTape.color.set(FINGER_COLORS[0]);thumbTape.roughness=.9;const group=new T.Group();group.name='Jointed fretting hand';const palm=palmMesh(T,skin,0);group.add(palm);
+ const rigs=[.105,.112,.105,.09].map((w,i)=>fingerRig(T,skin,nails,[[.46,.34,.23],[.49,.36,.24],[.46,.34,.23],[.40,.29,.21]][i],w,FINGER_COLORS[i+1]));rigs.forEach((r,i)=>{r.mesh.name=`Finger ${i+1} skeletal mesh`;group.add(r.mesh);});
  let thumb=null,key='',remaining=0,pressed=[],desired=[];
  function refreshTips(){group.updateMatrixWorld(true);group.userData.fingertips=rigs.map((r,i)=>({finger:i+1,position:group.worldToLocal(r.end.getWorldPosition(new T.Vector3())).toArray(),pressed:pressed[i]}));}
  function update(notes=[],fx,sy,options={}){
@@ -59,11 +61,11 @@ export function createFrettingHand(T,skin,nails=skin){
    base.x=T.MathUtils.clamp(base.x,x-.22,x+.22);if(barre)base.y=-.65;
    r.solve(base,tip,barre);pressed.push(!!n);desired.push(tip.toArray());
   });
-  if(thumb){group.remove(thumb);thumb.geometry.dispose();}thumb=surface(T,[[anchor+.05,-.80,.23],[anchor-.24,-.57,.06],[anchor-.23,-.12,-.48],[anchor-.08,.20,-.48]],[.16,.145,.12,.005],skin);thumb.position.y=baseY+.44;thumb.name='Thumb behind neck';group.add(thumb);
+  if(thumb){group.remove(thumb);thumb.geometry.dispose();}thumb=surface(T,[[anchor+.05,-.80,.23],[anchor-.24,-.57,.06],[anchor-.23,-.12,-.48],[anchor-.08,.20,-.48]],[.16,.145,.12,.005],thumbTape);thumb.position.y=baseY+.44;thumb.name='Thumb behind neck';group.add(thumb);
   remaining=options.animate?8:0;if(!remaining){rigs.forEach(r=>r.tick(1));refreshTips();}group.userData.targets=desired;return true;
  }
  function tick(){if(!remaining)return false;rigs.forEach(r=>r.tick(remaining===1?1:.38));remaining--;refreshTips();return true;}
- return {group,update,tick,dispose(){rigs.forEach(r=>r.dispose());disposeMeshes(group);}};
+ return {group,update,tick,opacity(v){rigs.forEach(r=>r.opacity(v));thumbTape.opacity=v;thumbTape.depthWrite=v>=.98;},dispose(){thumbTape.dispose();rigs.forEach(r=>r.dispose());disposeMeshes(group);}};
 }
 
 export function createPickingHand(T,skin,nails=skin){
