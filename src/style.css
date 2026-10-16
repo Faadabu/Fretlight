@@ -9,3 +9,5 @@
 .stage-opacity{position:absolute;z-index:5;right:18px;top:18px;width:115px;font-size:9px;color:#69745d;background:#f8f7f1d9;padding:9px 10px;border:1px solid #d3d8ca;border-radius:5px}.stage-opacity input{margin:5px 0 0;height:12px;display:block}.string-guide{background:#f5f3ebaa;padding:7px;border-radius:6px}
 
 .chord-study{display:flex;align-items:center;gap:.65rem;font-size:.75rem;color:var(--muted);margin-top:.6rem}.chord-study select{max-width:155px;padding:.35rem .5rem}
+
+.library-search{display:flex;gap:12px;align-items:center;margin:20px 0}.library-search input{flex:1;max-width:520px;padding:12px;border:1px solid #ccd3c8;border-radius:8px}.genre-tabs{flex-wrap:wrap}

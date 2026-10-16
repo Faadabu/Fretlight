@@ -74,3 +74,7 @@ Architecture reference: https://threejs.org/docs/pages/SkinnedMesh.html and http
 ## Chord study and contact checks
 
 The studio now includes a Study a chord selector for C, G, D, Am, Em, E, A, Dm, F and Bm. Wide chord poses share a reachable palm position; barre fingers use the continuous straight skeletal finger across the string span. Picking positions are calculated from the actual transformed plectrum tip. 35 tests pass, including all common chord fingertip targets, F barre surface proximity on strings 1/2/6, and up/down pick contacts with a mirrored/rotated guitar parent. The F shape was also visually checked in the production browser. This does not establish collision-free anatomy for every imported score. Transform reference: https://threejs.org/docs/pages/Object3D.html .
+
+## Colored fingers and expanded course
+
+Fretting fingers have separate tape materials: index red, middle blue, ring gold, little purple, thumb green. Matching marker colors and numbered legend remain visible; tape follows opacity. The course now contains 68 lessons in five stages, 41 playable studies/melodies, 15 genres and 19 theory topics. The library has combined text and genre filtering. Artist repertoire lists listening/learning goals including Estas Tonne and Led Zeppelin, not bundled copyrighted transcriptions. Advanced manual gestures, alternate tunings, and professional-level skill assessment are not fully simulated. Source context: https://www.estastonne.com/ and https://www.ledzeppelin.com/ .

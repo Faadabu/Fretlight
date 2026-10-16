@@ -1,3 +1,5 @@
+import {expandCurriculum} from './advanced-curriculum.js';
+import {addTraditionalSongs} from './library-extras.js';
 // Beginner acoustic guitar curriculum. Strings: 1 = high E, 6 = low E.
 export const lessons = [
   {id:'day-01',title:'Meet the guitar',focus:'posture, pick, and open strings',minutes:15,steps:['Sit with the waist on your right thigh and keep the neck slightly up.','Name strings 6 to 1: E A D G B E; pluck each slowly with a relaxed thumb and index.','Play etude-01 once, stopping to retune if a string sounds wrong.'],theory:'A fret raises pitch by one semitone; open means fret 0.',exerciseId:'etude-01'},
@@ -75,3 +77,7 @@ const am=[n(5,0,0),n(4,2,2),n(3,2,3),n(2,1,1),n(1,0,0)];
 const em=[n(6,0,0),n(5,2,2),n(4,2,3),n(3,0,0),n(2,0,0),n(1,0,0)];
 songs.push({id:'am-em',title:'Two Chord Conversation',genre:'folk',description:'Change between Am and Em, one chord per bar.',bpm:50,events:[0,4,8,12].map((beat,i)=>({beat,duration:4,notes:i%2?em:am,direction:'down',label:i%2?'Em':'Am'}))});
 lessons[7].exerciseId='am-em';
+
+expandCurriculum({lessons,songs,genres,theoryTopics});
+addTraditionalSongs(songs);
+for(const s of songs){if(!s.level)s.level=s.id.startsWith('study-')?(['jazz','metal','modal','flamenco-inspired','percussive'].includes(s.genre)?'Advanced':'Intermediate'):'Beginner';}
